@@ -1,0 +1,34 @@
+---
+- name: Read request ID from file
+  slurp:
+    src: "{{ request_id_path }}"
+  register: request_id_slurp
+  when: request_id is not defined
+
+- name: Decode request ID
+  set_fact:
+    request_id: "{{ request_id_slurp.content | b64decode }}"
+  when: request_id is not defined
+
+- name: Retrieve certificate using request ID
+  ansible.builtin.uri:
+    url: "{{ ca_server }}/certnew.cer?ReqID={{ request_id }}&Enc=b64"
+    method: GET
+    user: "{{ ad_username }}"
+    password: "{{ ad_password }}"
+    return_content: yes
+    validate_certs: no
+  register: cert_retrieval
+
+- name: Save retrieved certificate
+  ansible.builtin.copy:
+    content: "{{ cert_retrieval.content }}"
+    dest: "{{ certificate_path }}"
+  when: "'-----BEGIN CERTIFICATE-----' in cert_retrieval.content"
+
+- name: Clean up temporary files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ request_id_path }}"

@@ -79,7 +79,7 @@ Example Playbook
 License
 -------
 
-see LICENSE file
+BSD
 
 Author Information
 ------------------

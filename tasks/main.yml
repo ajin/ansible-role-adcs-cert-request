@@ -1,0 +1,34 @@
+---
+# tasks file for adcs-cert-request
+- name: Install required packages (RHEL-based)
+  ansible.builtin.package:
+    name:
+      - openssl
+      - curl
+    state: present
+  when: "'RedHat' in ansible_os_family or 'CentOS' in ansible_os_family"
+
+- name: Check if request_id exists
+  ansible.builtin.stat:
+    path: "{{ request_id_path }}"
+  register: request_id_file
+
+- name: Check certificate expiration
+  include_tasks: check_certificate_expiry.yml
+
+- name: Set renew_certificate fact
+  set_fact:
+    renew_certificate: "{{ certificate_expired or force_renewal | bool }}"
+
+- include_tasks: request_certificate.yml
+  when: request_id_file.stat.exists == false and renew_certificate
+
+- name: Check if request_id exists
+  ansible.builtin.stat:
+    path: "{{ request_id_path }}"
+  register: request_id_file
+  
+- include_tasks: retrieve_certificate.yml
+  when: request_id_file.stat.exists == true and renew_certificate
+
+
